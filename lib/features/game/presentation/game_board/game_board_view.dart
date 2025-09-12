@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:math';
-import '../../application/game_board_cubit.dart';
+import '../../application/game_board_cubit.dart'; // Import correct
 import '../../domain/entities/tile.dart';
 import '../../domain/entities/direction.dart';
+import '../../../../core/constants/game_constants.dart';
 
 class GameBoardView extends StatelessWidget {
   const GameBoardView({super.key});
@@ -148,16 +149,16 @@ class GameBoardView extends StatelessWidget {
                                         physics: const NeverScrollableScrollPhysics(),
                                         gridDelegate:
                                             const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: GameBoardCubit.boardSize,
+                                              crossAxisCount: GameConstants.boardSize,
                                               crossAxisSpacing: 8,
                                               mainAxisSpacing: 8,
                                             ),
                                         itemCount:
-                                            GameBoardCubit.boardSize *
-                                            GameBoardCubit.boardSize,
+                                            GameConstants.boardSize *
+                                            GameConstants.boardSize,
                                         itemBuilder: (context, index) {
-                                          final row = index ~/ GameBoardCubit.boardSize;
-                                          final col = index % GameBoardCubit.boardSize;
+                                          final row = index ~/ GameConstants.boardSize;
+                                          final col = index % GameConstants.boardSize;
                                           final tile = state.board[row][col];
 
                                           return _buildTileWidget(tile);
@@ -234,7 +235,7 @@ class GameBoardView extends StatelessWidget {
 
   // Gère la détection des gestes de glissement
   void _handleSwipe(BuildContext context, DragEndDetails details) {
-    const double sensitivity = 100.0;
+    const double sensitivity = GameConstants.swipeSensitivity;
     final velocity = details.velocity.pixelsPerSecond;
 
     // Vérifie si le geste est assez rapide
@@ -463,12 +464,6 @@ class GameBoardView extends StatelessWidget {
       : value >= 2048
         ? Colors.white
         : const Color(0xFFF1F8E9);
-  }
-
-  double _getFontSize(int value) {
-    if (value < 100) return 32;
-    if (value < 1000) return 28;
-    return 24;
   }
 
   void _showHowToPlay(BuildContext context) {
