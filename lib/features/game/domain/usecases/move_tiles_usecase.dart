@@ -7,7 +7,7 @@ class MoveTilesUseCase {
 
   MoveTilesUseCase(this.repository);
 
-  GameBoard call(GameBoard board, Direction direction) {
+  Future<GameBoard> call(GameBoard board, Direction direction) async {
     if (!repository.canMove(board, direction)) {
       return board;
     }
@@ -15,8 +15,19 @@ class MoveTilesUseCase {
     final movedBoard = repository.moveTiles(board, direction);
     final boardWithNewTile = repository.addRandomTile(movedBoard);
     
+    // Met à jour le meilleur score si nécessaire
+    final currentBestScore = await repository.getBestScore();
+    final newBestScore = boardWithNewTile.score > currentBestScore 
+        ? boardWithNewTile.score 
+        : currentBestScore;
+    
+    if (boardWithNewTile.score > currentBestScore) {
+      await repository.saveBestScore(boardWithNewTile.score);
+    }
+    
     final finalBoard = boardWithNewTile.copyWith(
       isGameOver: repository.isGameOver(boardWithNewTile),
+      bestScore: newBestScore,
     );
 
     repository.saveGame(finalBoard);

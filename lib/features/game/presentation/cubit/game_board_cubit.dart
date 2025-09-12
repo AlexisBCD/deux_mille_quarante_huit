@@ -1,3 +1,4 @@
+import 'package:deux_mille_quarante_huit/features/game/domain/entities/game_board.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/direction.dart';
 import '../../domain/usecases/move_tiles_usecase.dart';
@@ -11,15 +12,33 @@ class GameBoardCubit extends Cubit<GameBoardState> {
   GameBoardCubit({
     required this.moveTilesUseCase,
     required this.resetGameUseCase,
-  }) : super(GameBoardState(gameBoard: resetGameUseCase()));
+  }) : super(GameBoardState(gameBoard: GameBoard(tiles: []))) {
+    _initializeGame();
+  }
 
-  void move(Direction direction) {
+  Future<void> _initializeGame() async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final gameBoard = await resetGameUseCase();
+      emit(state.copyWith(
+        gameBoard: gameBoard,
+        isLoading: false,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> move(Direction direction) async {
     if (state.gameOver || state.isLoading) return;
 
     emit(state.copyWith(isLoading: true));
 
     try {
-      final newGameBoard = moveTilesUseCase(state.gameBoard, direction);
+      final newGameBoard = await moveTilesUseCase(state.gameBoard, direction);
       emit(state.copyWith(
         gameBoard: newGameBoard,
         isLoading: false,
@@ -32,11 +51,11 @@ class GameBoardCubit extends Cubit<GameBoardState> {
     }
   }
 
-  void resetGame() {
+  Future<void> resetGame() async {
     emit(state.copyWith(isLoading: true));
 
     try {
-      final newGameBoard = resetGameUseCase();
+      final newGameBoard = await resetGameUseCase();
       emit(state.copyWith(
         gameBoard: newGameBoard,
         isLoading: false,

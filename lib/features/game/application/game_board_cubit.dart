@@ -1,27 +1,32 @@
 import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/entities/tile.dart';
 import '../domain/entities/direction.dart';
 
 class GameBoardState {
   final List<List<Tile?>> board;
   final int score;
+  final int bestScore;
   final bool gameOver;
 
   const GameBoardState({
     required this.board,
     this.score = 0,
+    this.bestScore = 0,
     this.gameOver = false,
   });
 
   GameBoardState copyWith({
     List<List<Tile?>>? board,
     int? score,
+    int? bestScore,
     bool? gameOver,
   }) {
     return GameBoardState(
       board: board ?? this.board,
       score: score ?? this.score,
+      bestScore: bestScore ?? this.bestScore,
       gameOver: gameOver ?? this.gameOver,
     );
   }
@@ -29,14 +34,45 @@ class GameBoardState {
 
 class GameBoardCubit extends Cubit<GameBoardState> {
   static const int boardSize = 4;
+  static const String _bestScoreKey = 'best_score';
   final Random _random = Random();
 
   GameBoardCubit() : super(_initialState()) {
+    _initializeGame();
+  }
+
+  Future<void> _initializeGame() async {
+    final bestScore = await _loadBestScore();
+    emit(state.copyWith(bestScore: bestScore));
     _addRandomTile();
     _addRandomTile();
   }
 
-  // Initialise un plateau 4x4 vide
+  Future<int> _loadBestScore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_bestScoreKey) ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Future<void> _saveBestScore(int score) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_bestScoreKey, score);
+    } catch (e) {
+      // Log l'erreur si nécessaire
+    }
+  }
+
+  Future<void> _updateBestScore() async {
+    if (state.score > state.bestScore) {
+      await _saveBestScore(state.score);
+      emit(state.copyWith(bestScore: state.score));
+    }
+  }
+
   static GameBoardState _initialState() {
     return GameBoardState(
       board: List.generate(
@@ -70,21 +106,27 @@ class GameBoardCubit extends Cubit<GameBoardState> {
     final random = _random.nextDouble();
     
     if (random < 0.05) {
-      // 5% chance d'avoir une tuile bonus
+      // 5% de chance d'avoir une tuile bonus
       final value = _random.nextDouble() < 0.5 ? 2 : 4;
       newTile = Tile(value: value, row: row, col: col, type: TileType.bonus);
     } else if (random < 0.08) {
-      // 3% chance d'avoir une tuile gel (avec 3 utilisations)
-      newTile = Tile(value: 0, row: row, col: col, type: TileType.freeze, freezeUsesRemaining: 3);
-    } else if (random < 0.93) {
-      // 85% chance d'avoir 2
+      // 3% de chance d'avoir une tuile gel
+      newTile = Tile(
+        value: 0, 
+        row: row, 
+        col: col, 
+        type: TileType.freeze,
+        freezeUsesRemaining: 3,
+      );
+    } else if (random < 0.9) {
+      // 85% de chance d'avoir un 2
       newTile = Tile(value: 2, row: row, col: col);
     } else {
-      // 7% chance d'avoir 4
+      // 7% de chance d'avoir un 4
       newTile = Tile(value: 4, row: row, col: col);
     }
 
-    // Met à jour le plateau
+    // Crée une nouvelle grille avec la tuile ajoutée
     final newBoard = List.generate(
       boardSize,
       (r) => List.generate(boardSize, (c) => state.board[r][c]),
@@ -170,6 +212,9 @@ class GameBoardCubit extends Cubit<GameBoardState> {
         emit(state.copyWith(gameOver: true));
       }
     }
+
+    // Après avoir mis à jour le score, appelez :
+    _updateBestScore();
   }
 
   // Applique l'effet gel aux tuiles adjacentes et réduit les utilisations
@@ -407,8 +452,9 @@ class GameBoardCubit extends Cubit<GameBoardState> {
   }
 
   // Redémarre le jeu
-  void resetGame() {
-    emit(_initialState());
+  Future<void> resetGame() async {
+    final bestScore = await _loadBestScore();
+    emit(_initialState().copyWith(bestScore: bestScore));
     _addRandomTile();
     _addRandomTile();
   }

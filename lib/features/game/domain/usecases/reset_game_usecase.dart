@@ -6,8 +6,8 @@ class ResetGameUseCase {
 
   ResetGameUseCase(this.repository);
 
-  GameBoard call() {
-    final initialBoard = repository.getInitialBoard();
+  Future<GameBoard> call() async {
+    final initialBoard = await repository.getInitialBoard();
     final boardWithTile1 = repository.addRandomTile(initialBoard);
     final boardWithTile2 = repository.addRandomTile(boardWithTile1);
     

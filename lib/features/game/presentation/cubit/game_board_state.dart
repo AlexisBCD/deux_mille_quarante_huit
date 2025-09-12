@@ -28,5 +28,6 @@ class GameBoardState {
   // Getters de commodité
   List<List<Tile?>> get board => gameBoard.tiles;
   int get score => gameBoard.score;
+  int get bestScore => gameBoard.bestScore;
   bool get gameOver => gameBoard.isGameOver;
 }

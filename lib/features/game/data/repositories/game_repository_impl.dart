@@ -1,10 +1,10 @@
+import 'dart:math';
 import '../../domain/entities/game_board.dart';
 import '../../domain/entities/direction.dart';
 import '../../domain/entities/tile.dart';
 import '../../domain/repositories/game_repository.dart';
 import '../datasources/local_game_datasource.dart';
 import '../../../../core/constants/game_constants.dart';
-import 'dart:math';
 
 class GameRepositoryImpl implements GameRepository {
   final LocalGameDataSource dataSource;
@@ -13,38 +13,38 @@ class GameRepositoryImpl implements GameRepository {
   GameRepositoryImpl(this.dataSource);
 
   @override
-  GameBoard getInitialBoard() {
+  Future<int> getBestScore() async {
+    return await dataSource.getBestScore();
+  }
+
+  @override
+  Future<void> saveBestScore(int score) async {
+    await dataSource.saveBestScore(score);
+  }
+
+  @override
+  Future<GameBoard> getInitialBoard() async {
+    final bestScore = await getBestScore();
     return GameBoard(
       tiles: List.generate(
         GameConstants.boardSize,
         (index) => List.generate(GameConstants.boardSize, (index) => null),
       ),
+      bestScore: bestScore,
     );
   }
 
   @override
   GameBoard addRandomTile(GameBoard board) {
-    final emptyCells = <List<int>>[];
-    
-    // Trouve toutes les cellules vides
-    for (int row = 0; row < GameConstants.boardSize; row++) {
-      for (int col = 0; col < GameConstants.boardSize; col++) {
-        if (board.tiles[row][col] == null) {
-          emptyCells.add([row, col]);
-        }
-      }
-    }
-
+    final emptyCells = board.getEmptyCells();
     if (emptyCells.isEmpty) return board;
 
-    // Choisit une cellule vide aléatoire
     final randomCell = emptyCells[_random.nextInt(emptyCells.length)];
     final row = randomCell[0];
     final col = randomCell[1];
 
     final newTile = _generateRandomTile(row, col);
     
-    // Met à jour le plateau
     final newTiles = List.generate(
       GameConstants.boardSize,
       (r) => List.generate(GameConstants.boardSize, (c) => board.tiles[r][c]),
@@ -54,6 +54,138 @@ class GameRepositoryImpl implements GameRepository {
     return board.copyWith(tiles: newTiles);
   }
 
+  @override
+  GameBoard moveTiles(GameBoard board, Direction direction) {
+    final newTiles = _copyBoard(board.tiles);
+    bool moved = false;
+    int scoreGained = 0;
+
+    // Applique l'effet gel aux tuiles touchées par une tuile gel
+    _applyFreezeEffects(newTiles);
+
+    switch (direction) {
+      case Direction.left:
+        for (int row = 0; row < GameConstants.boardSize; row++) {
+          final result = _moveAndMergeRow(newTiles[row]);
+          newTiles[row] = result.tiles;
+          if (result.moved) moved = true;
+          scoreGained += result.score;
+        }
+        break;
+      case Direction.right:
+        for (int row = 0; row < GameConstants.boardSize; row++) {
+          final reversed = newTiles[row].reversed.toList();
+          final result = _moveAndMergeRow(reversed);
+          newTiles[row] = result.tiles.reversed.toList();
+          if (result.moved) moved = true;
+          scoreGained += result.score;
+        }
+        break;
+      case Direction.up:
+        for (int col = 0; col < GameConstants.boardSize; col++) {
+          final column = [
+            for (int row = 0; row < GameConstants.boardSize; row++) newTiles[row][col]
+          ];
+          final result = _moveAndMergeRow(column);
+          for (int row = 0; row < GameConstants.boardSize; row++) {
+            newTiles[row][col] = result.tiles[row];
+          }
+          if (result.moved) moved = true;
+          scoreGained += result.score;
+        }
+        break;
+      case Direction.down:
+        for (int col = 0; col < GameConstants.boardSize; col++) {
+          final column = [
+            for (int row = GameConstants.boardSize - 1; row >= 0; row--) newTiles[row][col]
+          ];
+          final result = _moveAndMergeRow(column);
+          for (int row = 0; row < GameConstants.boardSize; row++) {
+            newTiles[GameConstants.boardSize - 1 - row][col] = result.tiles[row];
+          }
+          if (result.moved) moved = true;
+          scoreGained += result.score;
+        }
+        break;
+    }
+
+    if (moved) {
+      _reduceAllFreezeCounters(newTiles);
+      _updateTilePositions(newTiles);
+      
+      return board.copyWith(
+        tiles: newTiles,
+        score: board.score + scoreGained,
+      );
+    }
+
+    return board;
+  }
+
+  @override
+  bool canMove(GameBoard board, Direction direction) {
+    final testTiles = _copyBoard(board.tiles);
+    
+    switch (direction) {
+      case Direction.left:
+        for (int row = 0; row < GameConstants.boardSize; row++) {
+          final result = _moveAndMergeRow(testTiles[row]);
+          if (result.moved) return true;
+        }
+        break;
+      case Direction.right:
+        for (int row = 0; row < GameConstants.boardSize; row++) {
+          final reversed = testTiles[row].reversed.toList();
+          final result = _moveAndMergeRow(reversed);
+          if (result.moved) return true;
+        }
+        break;
+      case Direction.up:
+        for (int col = 0; col < GameConstants.boardSize; col++) {
+          final column = [
+            for (int row = 0; row < GameConstants.boardSize; row++) testTiles[row][col]
+          ];
+          final result = _moveAndMergeRow(column);
+          if (result.moved) return true;
+        }
+        break;
+      case Direction.down:
+        for (int col = 0; col < GameConstants.boardSize; col++) {
+          final column = [
+            for (int row = GameConstants.boardSize - 1; row >= 0; row--) testTiles[row][col]
+          ];
+          final result = _moveAndMergeRow(column);
+          if (result.moved) return true;
+        }
+        break;
+    }
+    
+    return false;
+  }
+
+  @override
+  bool isGameOver(GameBoard board) {
+    if (!board.isFull) return false;
+    
+    // Vérifie si des mouvements sont possibles
+    for (final direction in Direction.values) {
+      if (canMove(board, direction)) return false;
+    }
+    
+    return true;
+  }
+
+  @override
+  void saveGame(GameBoard board) {
+    dataSource.saveGameState(board);
+  }
+
+  @override
+  GameBoard? loadGame() {
+    return dataSource.loadGameState();
+  }
+
+  // Méthodes privées
   Tile _generateRandomTile(int row, int col) {
     final random = _random.nextDouble();
     
@@ -75,32 +207,158 @@ class GameRepositoryImpl implements GameRepository {
     }
   }
 
-  // Implémentez les autres méthodes ici...
-  @override
-  GameBoard moveTiles(GameBoard board, Direction direction) {
-    // Votre logique de mouvement existante
-    throw UnimplementedError();
+  void _applyFreezeEffects(List<List<Tile?>> board) {
+    final freezeTilesToRemove = <List<int>>[];
+    
+    for (int row = 0; row < GameConstants.boardSize; row++) {
+      for (int col = 0; col < GameConstants.boardSize; col++) {
+        final tile = board[row][col];
+        if (tile != null && tile.isFreeze && !tile.isFreezeExhausted) {
+          bool hasAffectedSomeone = false;
+          
+          for (final direction in Direction.values) {
+            final delta = direction.delta;
+            final newRow = row + delta[0];
+            final newCol = col + delta[1];
+            
+            if (newRow >= 0 && newRow < GameConstants.boardSize && 
+                newCol >= 0 && newCol < GameConstants.boardSize) {
+              final targetTile = board[newRow][newCol];
+              if (targetTile != null && !targetTile.isFrozen && !targetTile.isFreeze) {
+                board[newRow][newCol] = targetTile.applyFreeze(turns: 3);
+                hasAffectedSomeone = true;
+              }
+            }
+          }
+          
+          if (hasAffectedSomeone) {
+            final updatedTile = tile.reduceFreezeTileUses();
+            if (updatedTile.isFreezeExhausted) {
+              freezeTilesToRemove.add([row, col]);
+            } else {
+              board[row][col] = updatedTile;
+            }
+          }
+        }
+      }
+    }
+    
+    for (final position in freezeTilesToRemove) {
+      board[position[0]][position[1]] = null;
+    }
   }
 
-  @override
-  bool canMove(GameBoard board, Direction direction) {
-    // Votre logique de vérification de mouvement
-    throw UnimplementedError();
+  void _reduceAllFreezeCounters(List<List<Tile?>> board) {
+    for (int row = 0; row < GameConstants.boardSize; row++) {
+      for (int col = 0; col < GameConstants.boardSize; col++) {
+        final tile = board[row][col];
+        if (tile != null && tile.isFrozen) {
+          board[row][col] = tile.reduceFreeze();
+        }
+      }
+    }
   }
 
-  @override
-  bool isGameOver(GameBoard board) {
-    // Votre logique de vérification de fin de jeu
-    throw UnimplementedError();
+  _MoveResult _moveAndMergeRow(List<Tile?> tiles) {
+    final movableTiles = <Tile>[];
+    final frozenPositions = <int, Tile>{};
+    
+    for (int i = 0; i < tiles.length; i++) {
+      final tile = tiles[i];
+      if (tile != null) {
+        if (tile.canMove && !tile.isFreeze) {
+          movableTiles.add(tile);
+        } else {
+          frozenPositions[i] = tile;
+        }
+      }
+    }
+    
+    final result = <Tile?>[];
+    int score = 0;
+    bool moved = false;
+    
+    int i = 0;
+    while (i < movableTiles.length) {
+      if (i + 1 < movableTiles.length && 
+          movableTiles[i].canMergeWith(movableTiles[i + 1])) {
+        final mergedValue = movableTiles[i].getMergedValue(movableTiles[i + 1]);
+        result.add(Tile(
+          value: mergedValue,
+          row: movableTiles[i].row,
+          col: movableTiles[i].col,
+          type: TileType.normal,
+        ));
+        score += mergedValue;
+        i += 2;
+        moved = true;
+      } else {
+        result.add(movableTiles[i]);
+        i++;
+      }
+    }
+    
+    final finalResult = List<Tile?>.filled(GameConstants.boardSize, null);
+    
+    frozenPositions.forEach((position, tile) {
+      finalResult[position] = tile;
+    });
+    
+    int resultIndex = 0;
+    for (int pos = 0; pos < GameConstants.boardSize && resultIndex < result.length; pos++) {
+      if (finalResult[pos] == null) {
+        finalResult[pos] = result[resultIndex];
+        resultIndex++;
+      }
+    }
+    
+    if (!moved) {
+      for (int j = 0; j < tiles.length; j++) {
+        if ((tiles[j] == null) != (finalResult[j] == null) ||
+            (tiles[j] != null && finalResult[j] != null && 
+             !_tilesEqual(tiles[j]!, finalResult[j]!))) {
+          moved = true;
+          break;
+        }
+      }
+    }
+    
+    return _MoveResult(tiles: finalResult, moved: moved, score: score);
   }
 
-  @override
-  void saveGame(GameBoard board) {
-    dataSource.saveGameState(board);
+  bool _tilesEqual(Tile tile1, Tile tile2) {
+    return tile1.value == tile2.value && 
+           tile1.type == tile2.type && 
+           tile1.freezeRemainingTurns == tile2.freezeRemainingTurns &&
+           tile1.freezeUsesRemaining == tile2.freezeUsesRemaining;
   }
 
-  @override
-  GameBoard? loadGame() {
-    return dataSource.loadGameState();
+  void _updateTilePositions(List<List<Tile?>> board) {
+    for (int row = 0; row < GameConstants.boardSize; row++) {
+      for (int col = 0; col < GameConstants.boardSize; col++) {
+        if (board[row][col] != null) {
+          board[row][col] = board[row][col]!.copyWith(row: row, col: col);
+        }
+      }
+    }
   }
+
+  List<List<Tile?>> _copyBoard(List<List<Tile?>> board) {
+    return List.generate(
+      GameConstants.boardSize,
+      (row) => List.generate(GameConstants.boardSize, (col) => board[row][col]),
+    );
+  }
+}
+
+class _MoveResult {
+  final List<Tile?> tiles;
+  final bool moved;
+  final int score;
+  
+  _MoveResult({
+    required this.tiles,
+    required this.moved,
+    required this.score,
+  });
 }
