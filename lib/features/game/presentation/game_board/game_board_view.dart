@@ -356,12 +356,19 @@ class GameBoardView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
+                    _getTileEmoji(tile.value),
+                    style: TextStyle(
+                      fontSize: _getEmojiFontSize(tile.value),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
                     '${tile.value}',
                     style: TextStyle(
                       color: tile.isFrozen 
                         ? const Color(0xFF1976D2)
                         : _getTextColor(tile.value),
-                      fontSize: _getFontSize(tile.value),
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -369,7 +376,7 @@ class GameBoardView extends StatelessWidget {
                     Text(
                       '🧊 ${tile.freezeRemainingTurns}',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 10,
                         color: Color(0xFF1976D2),
                       ),
                     ),
@@ -377,6 +384,48 @@ class GameBoardView extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  // Retourne l'emoji correspondant à la valeur de la tuile
+  String _getTileEmoji(int value) {
+    switch (value) {
+      case 2:
+        return '🌱'; // Pousse
+      case 4:
+        return '🌿'; // Petite plante
+      case 8:
+        return '☘️'; // Trèfle
+      case 16:
+        return '🌾'; // Blé
+      case 32:
+        return '🌸'; // Fleur de cerisier
+      case 64:
+        return '🌺'; // Hibiscus
+      case 128:
+        return '🌻'; // Tournesol
+      case 256:
+        return '🌹'; // Rose
+      case 512:
+        return '🌳'; // Arbre
+      case 1024:
+        return '🌲'; // Sapin
+      case 2048:
+        return '🌴'; // Palmier
+      case 4096:
+        return '🎋'; // Bambou
+      case 8192:
+        return '🌊'; // Océan
+      default:
+        return '🍃'; // Feuille
+    }
+  }
+
+  // Retourne la taille de police pour les emojis selon la valeur
+  double _getEmojiFontSize(int value) {
+    if (value < 100) return 28;
+    if (value < 1000) return 24;
+    if (value < 10000) return 20;
+    return 18;
   }
 
   Color _getTileColor(int value) {
@@ -435,7 +484,8 @@ class GameBoardView extends StatelessWidget {
             ),
           ),
           content: const Text(
-            'Glissez pour déplacer les tuiles. Les tuiles identiques fusionnent comme des plantes qui grandissent !\n\n'
+            'Glissez pour déplacer les tuiles. Faites grandir votre jardin en fusionnant les mêmes plantes !\n\n'
+            '🌱 → 🌿 → ☘️ → 🌾 → 🌸 → 🌺 → 🌻 → 🌹 → 🌳 → 🌲 → 🌴\n\n'
             '🌟 ÉTOILE : peut fusionner avec toutes les autres tuiles !\n\n'
             '❄️ GELÉE : gèle les tuiles adjacentes pendant plusieurs tours.\n\n'
             '🧊 GELÉES : tuiles temporairement bloquées par le froid.',
