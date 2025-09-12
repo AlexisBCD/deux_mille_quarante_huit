@@ -1,3 +1,2 @@
 # deux_mille_quarante_huit
-
-A new Flutter project.
+Jeu 2048 en Flutter
