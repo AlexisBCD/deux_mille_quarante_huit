@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'features/game/presentation/game_board/game_board_page.dart';
+import 'features/home/presentation/pages/home_page.dart';
 
 void main() {
   runApp(const MainApp());
@@ -17,7 +17,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.green,
         fontFamily: 'Roboto',
       ),
-      home: kIsWeb ? const WebWrapper() : const GameBoardPage(),
+      home: kIsWeb ? const WebWrapper() : const HomePage(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -49,7 +49,7 @@ class WebWrapper extends StatelessWidget {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: const GameBoardPage(),
+          child: const HomePage(),
         ),
       ),
     );

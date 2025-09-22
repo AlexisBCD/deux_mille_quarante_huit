@@ -13,20 +13,43 @@ class GameHeaderWidget extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          const Text(
-            '🌸 2048 Nature 🌸',
-            style: TextStyle(
-              fontSize: 26, // Légèrement réduit
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
-            ),
+          Row(
+            children: [
+              // Bouton retour
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              // Titre centré
+              Expanded(
+                child: Text(
+                  '🌸 2048 Nature 🌸',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24, // Réduit pour faire de la place
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E7D32),
+                  ),
+                ),
+              ),
+              // Espace pour équilibrer (même taille que le bouton)
+              SizedBox(width: 48),
+            ],
           ),
-          const SizedBox(height: 12), // Réduit de 16 à 12
+          const SizedBox(height: 12),
           BlocBuilder<GameBoardCubit, GameBoardState>(
             builder: (context, state) {
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start, // Alignement en haut
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ScoresWidget(
                     currentScore: state.score,

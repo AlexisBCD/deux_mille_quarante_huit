@@ -8,32 +8,34 @@ class ActionButtonsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        ElevatedButton(
-          onPressed: () => context.read<GameBoardCubit>().resetGame(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF4CAF50),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text(
-            '🌿 Nouveau Jardin',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-        ),
-        const SizedBox(width: 8),
+        // Bouton info
         IconButton(
           onPressed: () => showHowToPlayDialog(context),
           icon: const Icon(Icons.info_outline),
           style: IconButton.styleFrom(
             backgroundColor: const Color(0xFF4CAF50),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Bouton nouveau jardin
+        ElevatedButton(
+          onPressed: () => context.read<GameBoardCubit>().resetGame(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4CAF50),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text(
+            '🌿 Nouveau',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           ),
         ),
       ],

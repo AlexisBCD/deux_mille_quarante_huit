@@ -49,6 +49,7 @@ class GameOverWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              // Bouton pour nouvelle partie
               ElevatedButton.icon(
                 onPressed: () => context.read<GameBoardCubit>().resetGame(),
                 icon: const Icon(Icons.refresh, size: 18),
@@ -57,8 +58,25 @@ class GameOverWidget extends StatelessWidget {
                   backgroundColor: const Color(0xFF4CAF50),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              // Bouton pour retourner au menu
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.home, size: 18),
+                label: const Text('Menu'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF81C784),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
