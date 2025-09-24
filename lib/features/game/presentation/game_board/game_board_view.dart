@@ -5,6 +5,7 @@ import '../widgets/flower_background_widget.dart';
 import '../widgets/game_header_widget.dart';
 import '../widgets/game_board_widget.dart';
 import '../widgets/game_over_widget.dart';
+import '../widgets/audio_control_widget.dart';
 
 class GameBoardView extends StatelessWidget {
   const GameBoardView({super.key});

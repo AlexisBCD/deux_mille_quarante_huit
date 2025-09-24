@@ -14,10 +14,10 @@ enum GameMode {
     switch (this) {
       case GameMode.classic4x4:
       case GameMode.bonusMalus4x4:
-        return true; // Modes disponibles
       case GameMode.classic5x5:
+        return true; // Modes disponibles
       case GameMode.hardcore4x4:
-        return false; // Bientôt disponibles
+        return false; // Bientôt disponible
     }
   }
 }

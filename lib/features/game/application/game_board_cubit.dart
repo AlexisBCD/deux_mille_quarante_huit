@@ -7,6 +7,7 @@ import '../domain/entities/direction.dart';
 import '../domain/entities/game_board.dart';
 import '../domain/usecases/move_tiles_usecase.dart';
 import '../domain/usecases/reset_game_usecase.dart';
+import '../../../core/services/audio_service.dart';
 
 class GameBoardState {
   final GameBoard gameBoard;
@@ -45,6 +46,7 @@ class GameBoardState {
 class GameBoardCubit extends Cubit<GameBoardState> {
   final MoveTilesUseCase moveTilesUseCase;
   final ResetGameUseCase resetGameUseCase;
+  final AudioService _audioService = AudioService();
 
   GameBoardCubit({
     required this.moveTilesUseCase,
@@ -63,6 +65,11 @@ class GameBoardCubit extends Cubit<GameBoardState> {
   }
 
   Future<void> _initializeGame() async {
+    // Initialiser l'audio
+    await _audioService.initialize();
+    await _audioService.playBackgroundMusic();
+    
+    // Initialiser le jeu
     emit(state.copyWith(isLoading: true));
     try {
       final gameBoard = await resetGameUseCase(state.gameSettings);
@@ -89,6 +96,16 @@ class GameBoardCubit extends Cubit<GameBoardState> {
         direction, 
         state.gameSettings,
       );
+      
+      // Jouer des sons en fonction des changements
+      if (newGameBoard.score > state.gameBoard.score) {
+        // Si le score a augmenté, il y a eu une fusion
+        _audioService.playMergeSound();
+      } else if (newGameBoard != state.gameBoard) {
+        // Si le plateau a changé mais pas le score, c'est juste un mouvement
+        _audioService.playMoveSound();
+      }
+      
       emit(state.copyWith(
         gameBoard: newGameBoard,
         isLoading: false,

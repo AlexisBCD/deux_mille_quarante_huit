@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../application/game_board_cubit.dart';
-import '../../../../core/constants/game_constants.dart';
 import 'tile_widget.dart';
 import 'gesture_detector_widget.dart';
 
@@ -33,15 +32,15 @@ class GameBoardWidget extends StatelessWidget {
                   ),
                   child: GridView.builder(
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: GameConstants.boardSize,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: state.gameSettings.boardSize,
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                     ),
-                    itemCount: GameConstants.boardSize * GameConstants.boardSize,
+                    itemCount: state.gameSettings.boardSize * state.gameSettings.boardSize,
                     itemBuilder: (context, index) {
-                      final row = index ~/ GameConstants.boardSize;
-                      final col = index % GameConstants.boardSize;
+                      final row = index ~/ state.gameSettings.boardSize;
+                      final col = index % state.gameSettings.boardSize;
                       final tile = state.board[row][col];
                       return TileWidget(tile: tile);
                     },

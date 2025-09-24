@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../application/game_board_cubit.dart';
 import 'scores_widget.dart';
 import 'action_buttons_widget.dart';
+import 'audio_control_widget.dart';
 
 class GameHeaderWidget extends StatelessWidget {
   const GameHeaderWidget({super.key});
@@ -40,8 +41,8 @@ class GameHeaderWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              // Espace pour équilibrer (même taille que le bouton)
-              SizedBox(width: 48),
+              // Bouton de contrôle audio
+              const AudioControlWidget(),
             ],
           ),
           const SizedBox(height: 12),
