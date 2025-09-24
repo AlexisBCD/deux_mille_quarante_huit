@@ -5,6 +5,10 @@ import '../../domain/usecases/move_tiles_usecase.dart';
 import '../../domain/usecases/reset_game_usecase.dart';
 import '../../data/repositories/game_repository_impl.dart';
 import '../../data/datasources/local_game_datasource.dart';
+import '../../data/services/tile_generation_service.dart';
+import '../../data/services/freeze_effect_service.dart';
+import '../../data/services/movement_service.dart';
+import '../../data/services/board_utils_service.dart';
 import '../../application/game_board_cubit.dart';
 import './game_board_view.dart';
 
@@ -19,7 +23,20 @@ class GameBoardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dataSource = LocalGameDataSourceImpl();
-    final repository = GameRepositoryImpl(dataSource);
+    
+    // Créer les services
+    final boardUtilsService = BoardUtilsService();
+    final tileGenerationService = TileGenerationService();
+    final freezeEffectService = FreezeEffectService();
+    final movementService = MovementService(boardUtilsService);
+    
+    final repository = GameRepositoryImpl(
+      dataSource: dataSource,
+      tileGenerationService: tileGenerationService,
+      freezeEffectService: freezeEffectService,
+      movementService: movementService,
+      boardUtilsService: boardUtilsService,
+    );
     
     return BlocProvider(
       create: (context) => GameBoardCubit(
