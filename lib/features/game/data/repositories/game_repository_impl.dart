@@ -2,9 +2,9 @@ import 'dart:math';
 import '../../domain/entities/game_board.dart';
 import '../../domain/entities/direction.dart';
 import '../../domain/entities/tile.dart';
+import '../../domain/entities/game_settings.dart';
 import '../../domain/repositories/game_repository.dart';
 import '../datasources/local_game_datasource.dart';
-import '../../../../core/constants/game_constants.dart';
 
 class GameRepositoryImpl implements GameRepository {
   final LocalGameDataSource dataSource;
@@ -23,19 +23,19 @@ class GameRepositoryImpl implements GameRepository {
   }
 
   @override
-  Future<GameBoard> getInitialBoard() async {
+  Future<GameBoard> getInitialBoard(GameSettings settings) async {
     final bestScore = await getBestScore();
     return GameBoard(
       tiles: List.generate(
-        GameConstants.boardSize,
-        (index) => List.generate(GameConstants.boardSize, (index) => null),
+        settings.boardSize,
+        (index) => List.generate(settings.boardSize, (index) => null),
       ),
       bestScore: bestScore,
     );
   }
 
   @override
-  GameBoard addRandomTile(GameBoard board) {
+  GameBoard addRandomTile(GameBoard board, GameSettings settings) {
     final emptyCells = board.getEmptyCells();
     if (emptyCells.isEmpty) return board;
 
@@ -43,11 +43,11 @@ class GameRepositoryImpl implements GameRepository {
     final row = randomCell[0];
     final col = randomCell[1];
 
-    final newTile = _generateRandomTile(row, col);
+    final newTile = _generateRandomTile(row, col, settings);
     
     final newTiles = List.generate(
-      GameConstants.boardSize,
-      (r) => List.generate(GameConstants.boardSize, (c) => board.tiles[r][c]),
+      settings.boardSize,
+      (r) => List.generate(settings.boardSize, (c) => board.tiles[r][c]),
     );
     newTiles[row][col] = newTile;
 
@@ -55,39 +55,41 @@ class GameRepositoryImpl implements GameRepository {
   }
 
   @override
-  GameBoard moveTiles(GameBoard board, Direction direction) {
-    final newTiles = _copyBoard(board.tiles);
+  GameBoard moveTiles(GameBoard board, Direction direction, GameSettings settings) {
+    final newTiles = _copyBoard(board.tiles, settings.boardSize);
     bool moved = false;
     int scoreGained = 0;
 
-    // Applique l'effet gel aux tuiles touchées par une tuile gel
-    _applyFreezeEffects(newTiles);
+    // Applique l'effet gel aux tuiles touchées par une tuile gel (seulement en mode bonus/malus)
+    if (settings.hasFreezeTiles) {
+      _applyFreezeEffects(newTiles, settings.boardSize);
+    }
 
     switch (direction) {
       case Direction.left:
-        for (int row = 0; row < GameConstants.boardSize; row++) {
-          final result = _moveAndMergeRow(newTiles[row]);
+        for (int row = 0; row < settings.boardSize; row++) {
+          final result = _moveAndMergeRow(newTiles[row], settings);
           newTiles[row] = result.tiles;
           if (result.moved) moved = true;
           scoreGained += result.score;
         }
         break;
       case Direction.right:
-        for (int row = 0; row < GameConstants.boardSize; row++) {
+        for (int row = 0; row < settings.boardSize; row++) {
           final reversed = newTiles[row].reversed.toList();
-          final result = _moveAndMergeRow(reversed);
+          final result = _moveAndMergeRow(reversed, settings);
           newTiles[row] = result.tiles.reversed.toList();
           if (result.moved) moved = true;
           scoreGained += result.score;
         }
         break;
       case Direction.up:
-        for (int col = 0; col < GameConstants.boardSize; col++) {
+        for (int col = 0; col < settings.boardSize; col++) {
           final column = [
-            for (int row = 0; row < GameConstants.boardSize; row++) newTiles[row][col]
+            for (int row = 0; row < settings.boardSize; row++) newTiles[row][col]
           ];
-          final result = _moveAndMergeRow(column);
-          for (int row = 0; row < GameConstants.boardSize; row++) {
+          final result = _moveAndMergeRow(column, settings);
+          for (int row = 0; row < settings.boardSize; row++) {
             newTiles[row][col] = result.tiles[row];
           }
           if (result.moved) moved = true;
@@ -95,13 +97,13 @@ class GameRepositoryImpl implements GameRepository {
         }
         break;
       case Direction.down:
-        for (int col = 0; col < GameConstants.boardSize; col++) {
+        for (int col = 0; col < settings.boardSize; col++) {
           final column = [
-            for (int row = GameConstants.boardSize - 1; row >= 0; row--) newTiles[row][col]
+            for (int row = settings.boardSize - 1; row >= 0; row--) newTiles[row][col]
           ];
-          final result = _moveAndMergeRow(column);
-          for (int row = 0; row < GameConstants.boardSize; row++) {
-            newTiles[GameConstants.boardSize - 1 - row][col] = result.tiles[row];
+          final result = _moveAndMergeRow(column, settings);
+          for (int row = 0; row < settings.boardSize; row++) {
+            newTiles[settings.boardSize - 1 - row][col] = result.tiles[row];
           }
           if (result.moved) moved = true;
           scoreGained += result.score;
@@ -110,8 +112,10 @@ class GameRepositoryImpl implements GameRepository {
     }
 
     if (moved) {
-      _reduceAllFreezeCounters(newTiles);
-      _updateTilePositions(newTiles);
+      if (settings.hasFreezeTiles) {
+        _reduceAllFreezeCounters(newTiles, settings.boardSize);
+      }
+      _updateTilePositions(newTiles, settings.boardSize);
       
       return board.copyWith(
         tiles: newTiles,
@@ -123,38 +127,38 @@ class GameRepositoryImpl implements GameRepository {
   }
 
   @override
-  bool canMove(GameBoard board, Direction direction) {
-    final testTiles = _copyBoard(board.tiles);
+  bool canMove(GameBoard board, Direction direction, GameSettings settings) {
+    final testTiles = _copyBoard(board.tiles, settings.boardSize);
     
     switch (direction) {
       case Direction.left:
-        for (int row = 0; row < GameConstants.boardSize; row++) {
-          final result = _moveAndMergeRow(testTiles[row]);
+        for (int row = 0; row < settings.boardSize; row++) {
+          final result = _moveAndMergeRow(testTiles[row], settings);
           if (result.moved) return true;
         }
         break;
       case Direction.right:
-        for (int row = 0; row < GameConstants.boardSize; row++) {
+        for (int row = 0; row < settings.boardSize; row++) {
           final reversed = testTiles[row].reversed.toList();
-          final result = _moveAndMergeRow(reversed);
+          final result = _moveAndMergeRow(reversed, settings);
           if (result.moved) return true;
         }
         break;
       case Direction.up:
-        for (int col = 0; col < GameConstants.boardSize; col++) {
+        for (int col = 0; col < settings.boardSize; col++) {
           final column = [
-            for (int row = 0; row < GameConstants.boardSize; row++) testTiles[row][col]
+            for (int row = 0; row < settings.boardSize; row++) testTiles[row][col]
           ];
-          final result = _moveAndMergeRow(column);
+          final result = _moveAndMergeRow(column, settings);
           if (result.moved) return true;
         }
         break;
       case Direction.down:
-        for (int col = 0; col < GameConstants.boardSize; col++) {
+        for (int col = 0; col < settings.boardSize; col++) {
           final column = [
-            for (int row = GameConstants.boardSize - 1; row >= 0; row--) testTiles[row][col]
+            for (int row = settings.boardSize - 1; row >= 0; row--) testTiles[row][col]
           ];
-          final result = _moveAndMergeRow(column);
+          final result = _moveAndMergeRow(column, settings);
           if (result.moved) return true;
         }
         break;
@@ -164,12 +168,12 @@ class GameRepositoryImpl implements GameRepository {
   }
 
   @override
-  bool isGameOver(GameBoard board) {
+  bool isGameOver(GameBoard board, GameSettings settings) {
     if (!board.isFull) return false;
     
     // Vérifie si des mouvements sont possibles
     for (final direction in Direction.values) {
-      if (canMove(board, direction)) return false;
+      if (canMove(board, direction, settings)) return false;
     }
     
     return true;
@@ -186,32 +190,33 @@ class GameRepositoryImpl implements GameRepository {
   }
 
   // Méthodes privées
-  Tile _generateRandomTile(int row, int col) {
+  Tile _generateRandomTile(int row, int col, GameSettings settings) {
     final random = _random.nextDouble();
     
-    if (random < GameConstants.bonusTileProbability) {
+    if (settings.hasBonusTiles && random < settings.bonusTileProbability) {
       final value = _random.nextDouble() < 0.5 ? 2 : 4;
       return Tile(value: value, row: row, col: col, type: TileType.bonus);
-    } else if (random < GameConstants.bonusTileProbability + GameConstants.freezeTileProbability) {
+    } else if (settings.hasFreezeTiles && 
+               random < settings.bonusTileProbability + settings.freezeTileProbability) {
       return Tile(
         value: 0, 
         row: row, 
         col: col, 
         type: TileType.freeze,
-        freezeUsesRemaining: GameConstants.defaultFreezeUsesRemaining,
+        freezeUsesRemaining: 3,
       );
-    } else if (random < GameConstants.bonusTileProbability + GameConstants.freezeTileProbability + GameConstants.value2Probability) {
+    } else if (random < settings.bonusTileProbability + settings.freezeTileProbability + settings.value2Probability) {
       return Tile(value: 2, row: row, col: col);
     } else {
       return Tile(value: 4, row: row, col: col);
     }
   }
 
-  void _applyFreezeEffects(List<List<Tile?>> board) {
+  void _applyFreezeEffects(List<List<Tile?>> board, int boardSize) {
     final freezeTilesToRemove = <List<int>>[];
     
-    for (int row = 0; row < GameConstants.boardSize; row++) {
-      for (int col = 0; col < GameConstants.boardSize; col++) {
+    for (int row = 0; row < boardSize; row++) {
+      for (int col = 0; col < boardSize; col++) {
         final tile = board[row][col];
         if (tile != null && tile.isFreeze && !tile.isFreezeExhausted) {
           bool hasAffectedSomeone = false;
@@ -221,8 +226,8 @@ class GameRepositoryImpl implements GameRepository {
             final newRow = row + delta[0];
             final newCol = col + delta[1];
             
-            if (newRow >= 0 && newRow < GameConstants.boardSize && 
-                newCol >= 0 && newCol < GameConstants.boardSize) {
+            if (newRow >= 0 && newRow < boardSize && 
+                newCol >= 0 && newCol < boardSize) {
               final targetTile = board[newRow][newCol];
               if (targetTile != null && !targetTile.isFrozen && !targetTile.isFreeze) {
                 board[newRow][newCol] = targetTile.applyFreeze(turns: 3);
@@ -248,9 +253,9 @@ class GameRepositoryImpl implements GameRepository {
     }
   }
 
-  void _reduceAllFreezeCounters(List<List<Tile?>> board) {
-    for (int row = 0; row < GameConstants.boardSize; row++) {
-      for (int col = 0; col < GameConstants.boardSize; col++) {
+  void _reduceAllFreezeCounters(List<List<Tile?>> board, int boardSize) {
+    for (int row = 0; row < boardSize; row++) {
+      for (int col = 0; col < boardSize; col++) {
         final tile = board[row][col];
         if (tile != null && tile.isFrozen) {
           board[row][col] = tile.reduceFreeze();
@@ -259,7 +264,7 @@ class GameRepositoryImpl implements GameRepository {
     }
   }
 
-  _MoveResult _moveAndMergeRow(List<Tile?> tiles) {
+  _MoveResult _moveAndMergeRow(List<Tile?> tiles, GameSettings settings) {
     final movableTiles = <Tile>[];
     final frozenPositions = <int, Tile>{};
     
@@ -298,14 +303,14 @@ class GameRepositoryImpl implements GameRepository {
       }
     }
     
-    final finalResult = List<Tile?>.filled(GameConstants.boardSize, null);
+    final finalResult = List<Tile?>.filled(settings.boardSize, null);
     
     frozenPositions.forEach((position, tile) {
       finalResult[position] = tile;
     });
     
     int resultIndex = 0;
-    for (int pos = 0; pos < GameConstants.boardSize && resultIndex < result.length; pos++) {
+    for (int pos = 0; pos < settings.boardSize && resultIndex < result.length; pos++) {
       if (finalResult[pos] == null) {
         finalResult[pos] = result[resultIndex];
         resultIndex++;
@@ -333,9 +338,9 @@ class GameRepositoryImpl implements GameRepository {
            tile1.freezeUsesRemaining == tile2.freezeUsesRemaining;
   }
 
-  void _updateTilePositions(List<List<Tile?>> board) {
-    for (int row = 0; row < GameConstants.boardSize; row++) {
-      for (int col = 0; col < GameConstants.boardSize; col++) {
+  void _updateTilePositions(List<List<Tile?>> board, int boardSize) {
+    for (int row = 0; row < boardSize; row++) {
+      for (int col = 0; col < boardSize; col++) {
         if (board[row][col] != null) {
           board[row][col] = board[row][col]!.copyWith(row: row, col: col);
         }
@@ -343,10 +348,10 @@ class GameRepositoryImpl implements GameRepository {
     }
   }
 
-  List<List<Tile?>> _copyBoard(List<List<Tile?>> board) {
+  List<List<Tile?>> _copyBoard(List<List<Tile?>> board, int boardSize) {
     return List.generate(
-      GameConstants.boardSize,
-      (row) => List.generate(GameConstants.boardSize, (col) => board[row][col]),
+      boardSize,
+      (row) => List.generate(boardSize, (col) => board[row][col]),
     );
   }
 }

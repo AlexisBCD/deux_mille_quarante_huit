@@ -36,17 +36,10 @@ class GameBoard {
     return true;
   }
 
-  Tile? getTileAt(int row, int col) {
-    if (row < 0 || row >= tiles.length || col < 0 || col >= tiles[0].length) {
-      return null;
-    }
-    return tiles[row][col];
-  }
-
   List<List<int>> getEmptyCells() {
     final emptyCells = <List<int>>[];
     for (int row = 0; row < tiles.length; row++) {
-      for (int col = 0; col < tiles[0].length; col++) {
+      for (int col = 0; col < tiles[row].length; col++) {
         if (tiles[row][col] == null) {
           emptyCells.add([row, col]);
         }

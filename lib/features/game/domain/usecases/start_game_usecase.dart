@@ -2,10 +2,10 @@ import '../entities/game_board.dart';
 import '../entities/game_settings.dart';
 import '../repositories/game_repository.dart';
 
-class ResetGameUseCase {
+class StartGameUseCase {
   final GameRepository repository;
 
-  ResetGameUseCase(this.repository);
+  StartGameUseCase(this.repository);
 
   Future<GameBoard> call(GameSettings settings) async {
     final initialBoard = await repository.getInitialBoard(settings);

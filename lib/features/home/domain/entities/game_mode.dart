@@ -12,9 +12,9 @@ enum GameMode {
 
   bool get isAvailable {
     switch (this) {
-      case GameMode.bonusMalus4x4:
-        return true; // Mode actuel
       case GameMode.classic4x4:
+      case GameMode.bonusMalus4x4:
+        return true; // Modes disponibles
       case GameMode.classic5x5:
       case GameMode.hardcore4x4:
         return false; // Bientôt disponibles

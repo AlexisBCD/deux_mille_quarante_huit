@@ -1,25 +1,30 @@
-import 'package:deux_mille_quarante_huit/features/game/domain/entities/game_board.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/direction.dart';
+import '../../domain/entities/game_settings.dart';
 import '../../domain/usecases/move_tiles_usecase.dart';
-import '../../domain/usecases/reset_game_usecase.dart';
+import '../../domain/usecases/start_game_usecase.dart';
+import '../../domain/entities/game_board.dart';
 import 'game_board_state.dart';
 
 class GameBoardCubit extends Cubit<GameBoardState> {
   final MoveTilesUseCase moveTilesUseCase;
-  final ResetGameUseCase resetGameUseCase;
+  final StartGameUseCase startGameUseCase;
 
   GameBoardCubit({
     required this.moveTilesUseCase,
-    required this.resetGameUseCase,
-  }) : super(GameBoardState(gameBoard: GameBoard(tiles: []))) {
+    required this.startGameUseCase,
+    required GameSettings initialSettings,
+  }) : super(GameBoardState(
+          gameBoard: GameBoard(tiles: []),
+          gameSettings: initialSettings,
+        )) {
     _initializeGame();
   }
 
   Future<void> _initializeGame() async {
     emit(state.copyWith(isLoading: true));
     try {
-      final gameBoard = await resetGameUseCase();
+      final gameBoard = await startGameUseCase(state.gameSettings);
       emit(state.copyWith(
         gameBoard: gameBoard,
         isLoading: false,
@@ -38,7 +43,11 @@ class GameBoardCubit extends Cubit<GameBoardState> {
     emit(state.copyWith(isLoading: true));
 
     try {
-      final newGameBoard = await moveTilesUseCase(state.gameBoard, direction);
+      final newGameBoard = await moveTilesUseCase(
+        state.gameBoard, 
+        direction, 
+        state.gameSettings,
+      );
       emit(state.copyWith(
         gameBoard: newGameBoard,
         isLoading: false,
@@ -55,7 +64,7 @@ class GameBoardCubit extends Cubit<GameBoardState> {
     emit(state.copyWith(isLoading: true));
 
     try {
-      final newGameBoard = await resetGameUseCase();
+      final newGameBoard = await startGameUseCase(state.gameSettings);
       emit(state.copyWith(
         gameBoard: newGameBoard,
         isLoading: false,

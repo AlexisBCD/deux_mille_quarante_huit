@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../game/domain/entities/game_settings.dart';
 import '../../application/home_cubit.dart';
 import '../../application/home_state.dart';
 import '../../domain/entities/game_mode.dart';
@@ -29,13 +30,16 @@ class HomeView extends StatelessWidget {
           child: BlocListener<HomeCubit, HomeState>(
             listener: (context, state) {
               if (state.isLoading && state.selectedMode != null) {
-                // Navigation vers le jeu
+                // Crée les settings basés sur le mode sélectionné
+                final gameSettings = GameSettings.fromMode(state.selectedMode!);
+                
+                // Navigation vers le jeu avec les settings
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const GameBoardPage(),
+                    builder: (context) => GameBoardPage(gameSettings: gameSettings),
                   ),
                 ).then((_) {
-                  // Reset l'état quand on revient - plus complet
+                  // Reset l'état quand on revient
                   context.read<HomeCubit>().resetToInitial();
                 });
               }
